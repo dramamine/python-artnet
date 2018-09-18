@@ -21,7 +21,7 @@ def run(name, config, controller=None):
 	mod = __import__('artnet.scripts', globals(), locals(), [name], -1)
 	try:
 		getattr(mod, name).main(config, controller)
-	except AttributeError, e:
+	except AttributeError as e:
 		import traceback
 		traceback.print_exc()
 		log.error("Couldn't find lighting script named %r" % name)

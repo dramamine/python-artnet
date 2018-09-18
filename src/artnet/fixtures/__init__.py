@@ -3,6 +3,7 @@ import logging
 import pkg_resources as pkg
 
 from artnet import dmx
+import collections
 
 log = logging.getLogger(__name__)
 
@@ -27,17 +28,17 @@ def rgb_to_hex(rgb):
 class FixtureGroup(list):
 	def __init__(self, fixtures=None):
 		super(FixtureGroup, self).__init__(fixtures if fixtures else [])
-    
+
 	def __getattr__(self, funcname):
 		def _dispatch(*args, **kwargs):
 			results = []
 			for f in self:
 				func = getattr(f, funcname)
-				if(callable(func)):
+				if(isinstance(func, collections.Callable)):
 					results.append(func(*args, **kwargs))
 			return results
 		return _dispatch
-	
+
 	def getFrame(self):
 		frame = dmx.Frame()
 		for f in self:
@@ -51,21 +52,21 @@ class Fixture(object):
 	def __init__(self, address):
 		self.address = address
 		self.controls = dict()
-	
+
 	@classmethod
 	def create(cls, address, fixture_path):
 		f = cls(address)
 		f.configure(load(fixture_path))
 		return f
-	
+
 	def __getattr__(self, fixture_func):
-		for label, ctrls in self.controls.items():
+		for label, ctrls in list(self.controls.items()):
 			for ctrl in ctrls:
 				func = getattr(ctrl, fixture_func, None)
-				if(callable(func)):
+				if(isinstance(func, collections.Callable)):
 					return getattr(ctrl, fixture_func)
 		raise AttributeError(fixture_func)
-	
+
 	def configure(self, fixturedef):
 		for klass in available_controls:
 			if klass is ProgramControl:
@@ -77,15 +78,15 @@ class Fixture(object):
 				ctrl = klass()
 				label = ctrl.configure(fixturedef)
 				self.addControl(label, ctrl)
-	
+
 	def addControl(self, label, control):
 		self.controls.setdefault(label, []).append(control)
-	
+
 	def getState(self):
 		#do program channels last, since we might be using strobe for speed
 		prg_cmp = lambda a,b: [-1,1][a[0] == 'program']
-		return [x for clist in sorted(self.controls.items(), prg_cmp) for c in clist[1] for x in c.getState()]
-	
+		return [x for clist in sorted(list(self.controls.items()), prg_cmp) for c in clist[1] for x in c.getState()]
+
 	def getFrame(self):
 		frame = dmx.Frame()
 		for offset, value in self.getState():
@@ -93,9 +94,9 @@ class Fixture(object):
 				continue
 			frame[(self.address - 1) + offset] = value
 		return frame
-	
+
 	def triggerMacro(self, macro_type, macro, speed=None):
-		for label, ctrls in self.controls.items():
+		for label, ctrls in list(self.controls.items()):
 			if(label != 'program'):
 				continue
 			for ctrl in ctrls:
@@ -110,28 +111,28 @@ class RGBControl(object):
 		self.red_level = 0
 		self.green_level = 0
 		self.blue_level = 0
-	
+
 	def configure(self, fixturedef):
 		self.red_offset = fixturedef['rgb_offsets']['red']
 		self.green_offset = fixturedef['rgb_offsets']['green']
 		self.blue_offset = fixturedef['rgb_offsets']['blue']
 		return 'rgb'
-	
+
 	def setColor(self, hexcode):
 		# for some reason this is out of order
 		r, b, g = hex_to_rgb(str(hexcode))
 		self.red_level = r
 		self.green_level = g
 		self.blue_level = b
-	
+
 	def getColor(self):
 		# for some reason this is out of order
 		return rgb_to_hex((
-            self.red_level, 
+            self.red_level,
             self.blue_level,
             self.green_level,
         ))
-	
+
 	def getState(self):
 		return [
 			(self.red_offset, self.red_level),
@@ -150,10 +151,10 @@ class XYControl(object):
 		self.xfine_level = 0
 		self.y_level = 0
 		self.xfine_level = 0
-	
+
 	def setPosition(self, x, y):
 		pass
-	
+
 	def configure(self, fixturedef):
 		# self.has_fine_control = (xfine is None and yfine is None)
 		# self.x_offset = x
@@ -162,7 +163,7 @@ class XYControl(object):
 		# 	self.xfine_offset = xfine
 		# 	self.yfine_offset = yfine
 		return 'xy'
-	
+
 	def getState(self):
 		xy = [
 			(self.x_offset, self.x_level),
@@ -177,17 +178,17 @@ class StrobeControl(object):
 	def __init__(self):
 		self.strobe_offset = None
 		self.strobe_value = 0
-	
+
 	def configure(self, fixturedef):
 		self.strobe_offset = fixturedef['strobe_offset']
 		return 'strobe'
-	
+
 	def setStrobe(self, value):
 		self.strobe_value = value
-	
+
 	def getStrobe(self):
 		return self.strobe_value
-	
+
 	def getState(self):
 		return [
 			(self.strobe_offset, self.strobe_value)
@@ -201,30 +202,30 @@ class ProgramControl(object):
 		self.program_macros = dict()
 		self.program_value = 0
 		self.program_speed_value = 0
-	
+
 	def hasMacro(self, label):
 		return label in self.program_macros
-	
+
 	def setMacro(self, label, value, speed):
 		self.program_macros[label] = (value, speed)
-	
+
 	def triggerMacro(self, label, speed=None):
 		value, original_speed = self.program_macros[label]
 		self.program_value = value
 		self.program_speed_value = speed or original_speed
-		
+
 	def configure(self, channel, fixturedef):
 		self.program_offset = channel['offset']
 		self.macro_type = channel['type']
 		if(channel['type'] == 'program'):
 			self.program_speed_offset = channel.get('speed_offset', fixturedef.get('strobe_offset', None))
-		for label, conf in channel.get('macros', {}).items():
+		for label, conf in list(channel.get('macros', {}).items()):
 			if(isinstance(conf, int)):
 				self.setMacro(label, conf, None)
 			else:
 				self.setMacro(label, conf['value'], conf['speed'])
 		return 'program'
-	
+
 	def getState(self):
 		result = []
 		if(self.program_value):
@@ -239,18 +240,18 @@ class IntensityControl(object):
 		self.intensityfine_offset = None
 		self.intensity_value = 0
 		self.intensityfine_value = 0
-	
+
 	def configure(self, fixturedef):
 		self.intensity_offset = fixturedef['intensity_offset']
 		self.intensityfine_offset = fixturedef.get('intensityfine_offset', None)
 		return 'intensity'
-	
+
 	def setIntensity(self, value):
 		self.intensity_value = value
-	
+
 	def getIntensity(self):
 		return self.intensity_value
-	
+
 	def getState(self):
 		fine = []
 		if(self.intensityfine_offset is not None):

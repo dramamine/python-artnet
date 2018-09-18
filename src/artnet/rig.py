@@ -22,10 +22,10 @@ def load(config_path):
 		rig_data = yaml.safe_load(f)
 	
 	rig.name = rig_data['name']
-	for name, f in rig_data['fixtures'].items():
+	for name, f in list(rig_data['fixtures'].items()):
 		rig.fixtures[name] = fixtures.Fixture.create(f['address'], f['config'])
 	
-	for name, groups in rig_data['groups'].items():
+	for name, groups in list(rig_data['groups'].items()):
 		rig.groups[name] = fixtures.FixtureGroup([
 			rig.fixtures[g] for g in groups
 		])

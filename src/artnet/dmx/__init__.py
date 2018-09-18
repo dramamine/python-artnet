@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 
 class Frame(list):
 	def __init__(self, channels=None):
-		super(Frame, self).__init__((channels[i] if channels else None for i in xrange(512)))
+		super(Frame, self).__init__((channels[i] if channels else None for i in range(512)))
 	
 	def __setitem__(self, index, value):
 		if not(isinstance(index, int)):
@@ -92,7 +92,7 @@ class Controller(daemon.Poller):
 		f = self.last_frame
 		for g in self.generators:
 			try:
-				n = g.next()
+				n = next(g)
 				f = f.merge(n) if f else n
 			except StopIteration:
 				self.generators.remove(g)

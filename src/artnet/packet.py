@@ -31,7 +31,7 @@ class ArtNetPacket(object):
 			raise NotImplementedError('%x' % opcode)
 
 		klass = cls.opcode_map[opcode]
-		b = BitStream(bytes=data)
+		b = bitstring.BitStream(bytes=data)
 		fields = dict()
 		for name, fmt in klass.schema:
 			accessor = getattr(klass, 'parse_%s' % name, None)
@@ -150,7 +150,7 @@ class PollReplyPacket(ArtNetPacket):
 	universe = 0
 	status1 = 2
 	# status2 = Bits('0b0111').int
-	status2 = Bits(bin='0b0111')
+	status2 = bitstring.Bits(bin='0b0111')
 
 	num_ports = 0
 	port_types = '\0\0\0\0'
@@ -205,7 +205,7 @@ class PollReplyPacket(ArtNetPacket):
 
 	@classmethod
 	def parse_ip_address(cls, b, fmt):
-		b = BitStream(bytes=b.read(fmt))
+		b = bitstring.BitStream(bytes=b.read(fmt))
 		address = b.readlist(','.join(['uint:8'] * 4))
 		return '.'.join([str(x) for x in address])
 

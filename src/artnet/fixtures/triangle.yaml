@@ -1,0 +1,13 @@
+{
+    "manufacturer": "marten",
+    "name": "Triangle Panel",
+    "rgb_offsets" : {
+        "red": 0,
+        "blue": 1,
+        "green": 2,
+    },
+    "program_channels": [
+    ],
+    "strobe_offset": 4,
+    "intensity_offset": 6
+}

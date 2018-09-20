@@ -1,0 +1,17 @@
+{
+    "name": "Example Rig",
+
+    "fixtures": {
+        "triangle_1": {
+            "address": 1,
+            "config": "triangle.yaml"
+        },
+    },
+
+    "groups": {
+        "all": ["triangle_1"],
+        "odds": ["triangle_1"],
+        "evens": [],
+        "one": ["triangle_1"]
+    }
+}
